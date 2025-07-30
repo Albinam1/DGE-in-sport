@@ -1,0 +1,483 @@
+```{r}
+install.packages("tidyverse")
+library(tidyverse)
+library(tibble)
+library(purrr)
+library(GEOquery)
+library(limma)
+library(pheatmap)
+library(annotate)
+
+library(hgu133plus2.db)
+library(annotate) # для платформы GPL570
+library(ggrepel)
+library(dplyr)
+li?rary(ComplexHeatmap)
+library(circlize)
+library(ggVennDiagram)
+library(sva)
+library(gridExtra)
+```
+
+```{r}
+if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) {
+  install.packages("BiocManager")
+  BiocManager::install("ComplexHeatmap")
+}
+if (!requiredN?mespace("BiocManager" , quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install(c("sva"))
+
+install.packages("gridExtra")
+
+
+if (!require("ggVennDiagram")) install.packages(("ggVennDiagram"))
+
+```
+
+```{r}
+#???? Загрузка данных GEO
+gse_list <- list(
+ GSE28392 = getGEO("GSE28392", GSEMatrix = TRUE)[[1]],
+ GSE59880 = getGEO("GSE59880", GSEMatrix = TRUE)[[1]],
+ GSE25941 = getGEO("GSE25941", GSEMatrix = TRUE)[[1]]
+)
+```
+
+
+```{r}
+#  извлечения возрастной группы
+extrac?_age_group <- function(age_vector) {
+  ifelse(grepl("young", age_vector, ignore.case = TRUE), "Young",
+         ifelse(grepl("old", age_vector, ignore.case = TRUE), "Old", NA))
+}
+```
+
+
+```{r}
+# Предобработка и анализ с batch-коррекцией
+process_gse <- funct?on(gse_data, gse_name, age_field_name) {
+  eset <- gse_data  # основной набор
+  age_info <- eset@phenoData@data[[age_field_name]]
+  group <- extract_age_group(age_info)
+  
+  valid_samples <- !is.na(group)
+  eset <- eset[, valid_samples]
+  group <- group[va?id_samples]
+  group <- factor(group, levels = c("Young", "Old"))
+  
+  expr <- normalizeBetweenArrays(exprs(eset), method = "quantile")
+  batch_vector <- rep(gse_name, ncol(expr))
+  
+  mod <- model.matrix(~group)
+  combat_expr <- ComBat(dat= expr, batch = b?tch_vector, mod = model.matrix(~group))
+  design <- model.matrix(~group)
+  colnames(design) <- c("Intercept", "Old_vs_Young")
+  
+  fit <- lmFit(combat_expr, design)
+  fit <- eBayes(fit)
+  top <- topTable(fit, coef = "Old_vs_Young", number = Inf, adjust = "?dr")
+  
+  top$Gene <- getSYMBOL(rownames(top), "hgu133plus2.db")
+  top <- top[!is.na(top$Gene), ]
+  return(top)
+}
+```
+
+```{r}
+res_GSE28392 <- process_gse(gse_list[["GSE28392"]], gse_name = "GSE28392", "characteristics_ch1.2")
+res_GSE59880 <- process_gse(gs?_list[["GSE59880"]], gse_name = "GSE59880","characteristics_ch1")
+res_GSE25941 <- process_gse(gse_list[["GSE25941"]], gse_name = "GSE25941", "characteristics_ch1.1")
+```
+
+```{r}
+#Получение уникальных генов
+res_unique59880 <- res_GSE59880 %>%
+  arrange(adj.?.Val) %>%
+  distinct(Gene, .keep_all = TRUE)
+
+
+res_unique28392 <- res_GSE28392 %>%
+  arrange(adj.P.Val) %>%
+  distinct(Gene, .keep_all = TRUE)
+
+
+res_unique25941 <- res_GSE25941 %>%
+  arrange(adj.P.Val) %>%
+  distinct(Gene, .keep_all = TRUE)
+
+```
+
+```{r}
+# ??остроение Volcanoplot
+res_unique25941$threshold <- as.factor(ifelse(res_unique25941$adj.P.Val < 0.05 & abs(res_unique25941$logFC) > 1, "Significant", "Not significant"))
+
+top_genes <- head(res_unique25941[res_unique25941$threshold == "Significant", ], 10)
+?res_unique25941$threshold <- "Not Significant"
+res_unique25941$threshold[res_unique25941$adj.P.Val < 0.05 & res_unique25941$logFC > 1] <-"Upregulated"
+res_unique25941$threshold[res_unique25941$adj.P.Val < 0.05 & res_unique25941$logFC < -1] <- "Downregulate?"
+
+
+ggplot(res_unique25941, aes(x = logFC, y = -log10(adj.P.Val), color = threshold)) +
+  geom_point(alpha = 0.7, size = 1.5) +
+  scale_color_manual(values = c("Downregulated" = "blue", 
+                                "Not Significant" = "gray", 
+        ?                       "Upregulated" = "red")) +
+  geom_text_repel(data = top_genes,
+                  aes(label = Gene), 
+                  size = 3,
+                  color = "black",
+                  max.overlaps = Inf,
+                  box.padding = ?.5,
+                  point.padding = 0.5,
+                  segment.color = "grey50") +
+  theme_minimal() +
+  labs(title = "Volcano Plot with Gene Labels in GSE25941",
+       x = "Log2 Fold Change",
+       y = "-Log10 Adjusted P-value")
+```
+
+
+```{r}
+res_u?ique28392$threshold <- as.factor(ifelse(res_unique28392$adj.P.Val < 0.05 & abs(res_unique28392$logFC) > 1, "Significant", "Not significant"))
+
+top_genes <- head(res_unique28392[res_unique28392$threshold == "Significant", ], 10)
+
+res_unique28392$threshold <? "Not Significant"
+res_unique28392$threshold[res_unique28392$adj.P.Val < 0.05 & res_unique28392$logFC > 1] <-"Upregulated"
+res_unique28392$threshold[res_unique28392$adj.P.Val < 0.05 & res_unique28392$logFC < -1] <- "Downregulated"
+
+
+ggplot(res_unique28392,?aes(x = logFC, y = -log10(adj.P.Val), color = threshold)) +
+  geom_point(alpha = 0.7, size = 1.5) +
+  scale_color_manual(values = c("Downregulated" = "blue", 
+                                "Not Significant" = "gray", 
+                                "Upr?gulated" = "red")) +
+  geom_text_repel(data = top_genes,
+                  aes(label = Gene), 
+                  size = 3,
+                  color = "black",
+                  max.overlaps = Inf,
+                  box.padding = 0.5,
+                  point?padding = 0.5,
+                  segment.color = "grey50") +
+  theme_minimal() +
+  labs(title = "Volcano Plot with Gene Labels in GSE28392",
+       x = "Log2 Fold Change",
+       y = "-Log10 Adjusted P-value")
+```
+
+```{r}
+res_unique59880$threshold <- as.fa?tor(ifelse(res_unique59880$adj.P.Val < 0.05 & abs(res_unique59880$logFC) > 1, "Significant", "Not significant"))
+
+top_genes <- head(res_unique59880[res_unique59880$threshold == "Significant", ], 10)
+
+res_unique59880$threshold <- "Not Significant"
+res_uniqu?59880$threshold[res_unique59880$adj.P.Val < 0.05 & res_unique59880$logFC > 1] <-"Upregulated"
+res_unique59880$threshold[res_unique59880$adj.P.Val < 0.05 & res_unique59880$logFC < -1] <- "Downregulated"
+
+
+ggplot(res_unique59880, aes(x = logFC, y = -log10(ad?.P.Val), color = threshold)) +
+  geom_point(alpha = 0.7, size = 1.5) +
+  scale_color_manual(values = c("Downregulated" = "blue", 
+                                "Not Significant" = "gray", 
+                                "Upregulated" = "red")) +
+  geom_?ext_repel(data = top_genes,
+                  aes(label = Gene), 
+                  size = 3,
+                  color = "black",
+                  max.overlaps = Inf,
+                  box.padding = 0.5,
+                  point.padding = 0.5,
+             ?    segment.color = "grey50") +
+  theme_minimal() +
+  labs(title = "Volcano Plot with Gene Labels in GSE59880",
+       x = "Log2 Fold Change",
+       y = "-Log10 Adjusted P-value")
+```
+
+```{r}
+#Выбор общих гегнов
+deg_list <- list(GSE59880 = res_unique59880?
+                 GSE28392 = res_unique28392, 
+                 GSE25941 = res_unique25941)
+
+significant_genes <- lapply(deg_list, function(df) {
+  df %>%
+    filter(adj.P.Val < 0.05) %>%
+    pull(Gene) %>%
+    unique()
+})
+
+common_genes <- Reduce(intersect? significant_genes)
+```
+
+```{r}
+res_unique59880[res_unique59880["Gene"] == "SKAP2"]
+
+res_unique25941[res_unique25941["Gene"] == "SKAP2"]
+
+res_unique28392[res_unique28392["Gene"] == "SKAP2"]
+```
+```{r}
+# Тепловая карта общая
+fc_table <- lapply(names(deg_lis?), function(name) {
+  df <- deg_list[[name]]
+  df %>%
+    filter(Gene %in% common_genes) %>%
+    distinct(Gene, .keep_all = TRUE) %>%
+    select(Gene, logFC) %>%
+    rename(!!name := logFC)
+}) %>%
+  reduce(full_join, by = "Gene") %>%
+  column_to_rownames("?ene")
+
+fc_scaled <- scale(fc_table)
+
+fc_capped <- pmax(pmin(fc_scaled, 2), -2)
+
+gene_vars <- apply(fc_capped, 1, var, na.rm = TRUE)
+top_genes <- names(sort(gene_vars, decreasing = TRUE))
+fc_subset <- fc_capped[top_genes, ]
+pheatmap(fc_subset,
+         clus?er_rows = TRUE,
+         cluster_cols = TRUE,
+         fontsize_row = 10,
+         fontsize_col = 8,
+         main = "Heatmap of Shared Differentially Expressed Genes",
+         color = colorRampPalette(c("blue", "white", "red"))(100),
+         border_colo? = NA,
+         na_col = "grey",
+         breaks = seq(-2, 2, length.out = 101))
+         
+```
+
+```{r}
+# Тепловая карта отобранных генов
+selected_genes <- c(
+  "ATP1B4", "RPL22", "ESRRA", "UQCRB", "ACOT13", "PPIC", "ACTR1A", "STRADB", 
+  "HNRNPA2B1", "ALDH?A1", "UNC13C", "CMC2", "GPATCH8", "NDUFAF5", 
+  "MRPS12", "ADI1", "PTRHD1", "CD300LG", "TPI1", "MYH8", "ADIPOQ", "CRIM1", "EPB41L3", "FAM171A1", "PLAG1", "SLPI", "DLEU1", "SLC38A1", "SKAP2", "GREM1", "EFEMP1", "RXRG", "FEZ2", "TMEM11", "COL21A1", "BPGM", "?YOZ2", "CLEC2B", "HOXB2")
+
+fc_subset <- fc_capped[rownames(fc_capped) %in% selected_genes, ]
+
+pheatmap(fc_subset,
+         cluster_rows = TRUE,
+         cluster_cols = TRUE,
+         fontsize_row = 10,
+         fontsize_col = 9,
+         main = "Key Genes ?inked to Muscle Function & Aging",
+         color = colorRampPalette(c("blue", "white", "red"))(100),
+         border_color = NA)
+```
+
+```{r}
+# Выбираем только нужные столбцы: logFC и Gene
+df1 <- res_unique59880[, c("Gene", "logFC")]
+df2 <- res_unique28392?, c("Gene", "logFC")]
+df3 <- res_unique25941[, c("Gene", "logFC")]
+
+# Переименуем logFC для ясности
+colnames(df1)[2] <- "GSE59880_logFC"
+colnames(df2)[2] <- "GSE28392_logFC"
+colnames(df3)[2] <- "GSE25941_logFC"
+
+# Объединяем по Gene
+merged1 <- merge(df1, d?2, by = "Gene", all = TRUE)
+merged_all <- merge(merged1, df3, by = "Gene", all = TRUE)
+
+# Удалим гены, где logFC отсутствует во всех датасетах (если такие есть)
+merged_all <- merged_all[rowSums(is.na(merged_all[, -1])) < 3, ]
+
+head(merged_all)
+#write.csv(m?rged_all, "merged_logFC_table.csv", row.names = FALSE)
+```
+
+```{r}
+ggVennDiagram(significant_genes, label_alpha = 0) + 
+  scale_fill_gradient(low = "white", high = "blue") +
+  theme_minimal()
+```
+
+
+
+```{r}
+exprSet25941 <- exprs(gse_list["GSE25941"][[1]])
+
+?oxplot(exprSet25941, outline = FALSE, las=2, main = "До нормализации", col= "lightblue")
+```
+
+```{r}
+pca25941 <- prcomp(t(exprSet25941), scale.= TRUE)
+
+
+
+
+pcaData <- data.frame(PC1 = pca25941$x[,1],
+                         PC2 = pca25941$x[,2],           ?          
+                         Sample = colnames(exprSet25941))
+ggplot(pcaData, aes(PC1, PC2, label=Sample)) +
+    geom_point(size=3) +    geom_text(vjust=1.5, size=3) +
+    ggtitle("PCA по экспрессии генов") +    theme_minimal()
+
+# Опционально: добав??ть метаданные (например, возраст, до/после тренировки), если они есть
+pdata <- pData(gse_list["GSE25941"][[1]])
+pcaData$group <- pdata$characteristics_ch1.1  # пример
+
+
+            
+# Тогда можно раскрасить точки по группам
+ggplot(pcaData, aes(PC1, PC2, co?or=group)) + geom_point(size=3) + ggtitle("PCA с группами")
+
+```
+
+```{r}
+exprSet28392 <- exprs(gse_list["GSE28392"][[1]])
+
+boxplot(exprSet28392, outline = FALSE, las=2, main = "До нормализации", col= "lightblue")
+```
+
+```{r}
+pca28392 <- prcomp(t(exprSet283?2), scale.= TRUE)
+
+pcaData <- data.frame(PC1 = pca28392$x[,1],
+                         PC2 = pca28392$x[,2],                      
+                         Sample = colnames(exprSet28392))
+ggplot(pcaData, aes(PC1, PC2, label=Sample)) +
+    geom_point(size?3) +    geom_text(vjust=1.5, size=3) +
+    ggtitle("PCA по экспрессии генов") +    theme_minimal()
+
+# Опционально: добавить метаданные (например, возраст, до/после тренировки), если они есть
+pdata <- pData(gse_list["GSE28392"][[1]])
+pcaData$group <- pdata$?haracteristics_ch1.2  # пример
+
+
+            
+# Тогда можно раскрасить точки по группам
+ggplot(pcaData, aes(PC1, PC2, color=group)) + geom_point(size=3) + ggtitle("PCA с группами")
+```
+
+```{r}
+exprSet59880 <- exprs(gse_list["GSE59880"][[1]])
+
+boxplot(exprS?t59880, outline = FALSE, las=2, main = "До нормализации", col= "lightblue")
+```
+
+```{r}
+pca59880 <- prcomp(t(exprSet59880), scale.= TRUE)
+
+pcaData <- data.frame(PC1 = pca59880$x[,1],
+                         PC2 = pca59880$x[,2],                      
+    ?                    Sample = colnames(exprSet59880))
+
+
+ggplot(pcaData, aes(PC1, PC2, label=Sample)) +
+    geom_point(size=3) +    geom_text(vjust=1.5, size=3) +
+    ggtitle("PCA по экспрессии генов") +    theme_minimal()
+
+# Опционально: добавить метаданные?(например, возраст, до/после тренировки), если они есть
+pdata <- pData(gse_list["GSE59880"][[1]])
+pcaData$group <- pdata$characteristics_ch1  # пример
+
+
+            
+# Тогда можно раскрасить точки по группам
+ggplot(pcaData, aes(PC1, PC2, color=group)) + ge?m_point(size=3) + ggtitle("PCA с группами")
+```
+
+```{r}
+gse_ids <- c("GSE28392", "GSE59880", "GSE25941")
+expr_list <- list()
+pheno_list <- list()
+
+for (gse_id in gse_ids) {
+  gse <- getGEO(gse_id, GSEMatrix=TRUE)
+  expr <- exprs(gse[[1]])
+  pheno <- pData(?se[[1]])
+  
+  expr_list[[gse_id]] <- expr
+  pheno_list[[gse_id]] <- pheno
+}
+
+# --- ШАГ 2: Приведение матриц к общим генам (пересечение)
+common_genes <- Reduce(intersect, lapply(expr_list, rownames))
+expr_list <- lapply(expr_list, function(x) x[common_genes? ])
+
+# --- ШАГ 3: Объединение данных по столбцам (образцам)
+combined_expr <- do.call(cbind, expr_list)
+
+# --- ШАГ 4: Создание вектора batch (откуда образец)
+batch <- unlist(lapply(seq_along(expr_list), function(i) rep(names(expr_list)[i], ncol(expr_list[[i?]))))
+
+# --- ШАГ 5: Проверка распределения данных и нормализация
+boxplot(combined_expr, outline=FALSE, las=2, col="lightblue", main="До batch коррекции")
+
+# Предполагается, что данные уже нормализованы (обычно GEOMatrix данные предобработаны)
+# Если нет — ??римените RMA отдельно перед объединением
+
+# --- ШАГ 6: Batch-коррекция с помощью ComBat
+modcombat <- model.matrix(~1, data=data.frame(batch=batch))
+combat_expr <- ComBat(dat=combined_expr, batch=batch, mod=modcombat, par.prior=TRUE, prior.plots=FALSE)
+
+# -?- ШАГ 7: Визуализация PCA до и после batch коррекции
+
+plot_pca <- function(expr_mat, batch, title) {
+  pca <- prcomp(t(expr_mat), scale.=TRUE)
+  pcaData <- data.frame(PC1=pca$x[,1], PC2=pca$x[,2], Batch=batch)
+  
+  ggplot(pcaData, aes(x=PC1, y=PC2, color=B?tch)) +
+    geom_point(size=3) +
+    ggtitle(title) +
+    theme_minimal()
+}
+
+p1 <- plot_pca(combined_expr, batch, "PCA до batch коррекции")
+p2 <- plot_pca(combat_expr, batch, "PCA после batch коррекции")
+
+
+grid.arrange(p1, p2, ncol=2)
+
+```
+```{r}
+if (!requ?reNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("clusterProfiler")
+BiocManager::install("org.Hs.eg.db")  # Для человека
+install.packages("tidyverse")
+```
+```{r}
+lif (!requireNamespace("biomaRt", quietly?= TRUE)) {
+  install.packages("BiocManager")
+  BiocManager::install("biomaRt")
+}
+# Загрузка библиотек
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(enrichplot)
+
+# Список символов генов
+gene_symbols <- c("SKAP2", "DERL1", "TPI1", "ALDH6A1", "STRADB?, "ESRRA", "N4BP2L2", "FAM171A1", "UNC13C",
+                 "FEZ2", "PPIC", "CLEC11A", "GPATCH8", "CMC2", "RXRG", "HNRNPA2B1", "PDE4DIP", "RBM39",
+                 "NT5C2", "PPP1R14B", "SYNPO2", "SHLD1", "NPAS3", "SPTBN1", "PLAG1", "ATP1B4", "PTRHD1",
+   ?             "CD300LG", "NDUFAF5", "ZNF76", "UQCRB", "MRPS12", "PRSS23", "STIMATE", "MASP1", "N4BP2L1",
+                 "NFIC", "RPL22", "DMRT2", "ACTR1A", "HOXB2", "SCN4B", "FAM83B", "C2orf88", "PWWP3B",
+                 "UQCC5", "MLEC", "BZW1", "YIF1B",?"IVNS1ABP", "H3-3B", "ADI1", "ACOT13", "RADX",
+                 "TMEM9", "ADAMTSL4")
+
+library(biomaRt)
+
+# Используем GRCh37 (если нужна старая сборка)
+ensembl <- useMart("ENSEMBL_MART_ENSEMBL", 
+                   dataset = "hsapiens_gene_ensembl", 
+      ?            host = "https://grch37.ensembl.org")#`
+genes_ensembl <- getBM(attributes = c("hgnc_symbol", "ensembl_gene_id"),
+                       filters = "hgnc_symbol",
+                       values = gene_symbols,
+                       mart = ensembl)?
+print(genes_ensembl$ensembl_gene_id)
+``
+
+
+
