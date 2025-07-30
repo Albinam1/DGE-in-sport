@@ -1,4 +1,16 @@
 ```{r}
+#if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) {
+#  install.packages("BiocManager")
+#  BiocManager::install("ComplexHeatmap")
+#}
+#if (!requiredN?mespace("BiocManager" , quietly = TRUE))
+#  install.packages("BiocManager")
+#BiocManager::install(c("sva"))
+#install.packages("gridExtra")
+#if (!require("ggVennDiagram")) install.packages(("ggVennDiagram"))
+```
+
+```{r}
 install.packages("tidyverse")
 library(tidyverse)
 library(tibble)
@@ -9,7 +21,7 @@ library(pheatmap)
 library(annotate)
 
 library(hgu133plus2.db)
-library(annotate) # для платформы GPL570
+library(annotate) # Г¤Г«Гї ГЇГ«Г ГІГґГ®Г°Г¬Г» GPL570
 library(ggrepel)
 library(dplyr)
 li?rary(ComplexHeatmap)
@@ -20,24 +32,7 @@ library(gridExtra)
 ```
 
 ```{r}
-if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) {
-  install.packages("BiocManager")
-  BiocManager::install("ComplexHeatmap")
-}
-if (!requiredN?mespace("BiocManager" , quietly = TRUE))
-  install.packages("BiocManager")
-
-BiocManager::install(c("sva"))
-
-install.packages("gridExtra")
-
-
-if (!require("ggVennDiagram")) install.packages(("ggVennDiagram"))
-
-```
-
-```{r}
-#???? Загрузка данных GEO
+#???? Г‡Г ГЈГ°ГіГ§ГЄГ  Г¤Г Г­Г­Г»Гµ GEO
 gse_list <- list(
  GSE28392 = getGEO("GSE28392", GSEMatrix = TRUE)[[1]],
  GSE59880 = getGEO("GSE59880", GSEMatrix = TRUE)[[1]],
@@ -47,7 +42,7 @@ gse_list <- list(
 
 
 ```{r}
-#  извлечения возрастной группы
+#  ГЁГ§ГўГ«ГҐГ·ГҐГ­ГЁГї ГўГ®Г§Г°Г Г±ГІГ­Г®Г© ГЈГ°ГіГЇГЇГ»
 extrac?_age_group <- function(age_vector) {
   ifelse(grepl("young", age_vector, ignore.case = TRUE), "Young",
          ifelse(grepl("old", age_vector, ignore.case = TRUE), "Old", NA))
@@ -56,9 +51,9 @@ extrac?_age_group <- function(age_vector) {
 
 
 ```{r}
-# Предобработка и анализ с batch-коррекцией
+# ГЏГ°ГҐГ¤Г®ГЎГ°Г ГЎГ®ГІГЄГ  ГЁ Г Г­Г Г«ГЁГ§ Г± batch-ГЄГ®Г°Г°ГҐГЄГ¶ГЁГҐГ©
 process_gse <- funct?on(gse_data, gse_name, age_field_name) {
-  eset <- gse_data  # основной набор
+  eset <- gse_data  # Г®Г±Г­Г®ГўГ­Г®Г© Г­Г ГЎГ®Г°
   age_info <- eset@phenoData@data[[age_field_name]]
   group <- extract_age_group(age_info)
   
@@ -92,7 +87,7 @@ res_GSE25941 <- process_gse(gse_list[["GSE25941"]], gse_name = "GSE25941", "char
 ```
 
 ```{r}
-#Получение уникальных генов
+#ГЏГ®Г«ГіГ·ГҐГ­ГЁГҐ ГіГ­ГЁГЄГ Г«ГјГ­Г»Гµ ГЈГҐГ­Г®Гў
 res_unique59880 <- res_GSE59880 %>%
   arrange(adj.?.Val) %>%
   distinct(Gene, .keep_all = TRUE)
@@ -110,7 +105,7 @@ res_unique25941 <- res_GSE25941 %>%
 ```
 
 ```{r}
-# ??остроение Volcanoplot
+# ??Г®Г±ГІГ°Г®ГҐГ­ГЁГҐ Volcanoplot
 res_unique25941$threshold <- as.factor(ifelse(res_unique25941$adj.P.Val < 0.05 & abs(res_unique25941$logFC) > 1, "Significant", "Not significant"))
 
 top_genes <- head(res_unique25941[res_unique25941$threshold == "Significant", ], 10)
@@ -198,7 +193,7 @@ ggplot(res_unique59880, aes(x = logFC, y = -log10(ad?.P.Val), color = threshold)
 ```
 
 ```{r}
-#Выбор общих гегнов
+#Г‚Г»ГЎГ®Г° Г®ГЎГ№ГЁГµ ГЈГҐГЈГ­Г®Гў
 deg_list <- list(GSE59880 = res_unique59880?
                  GSE28392 = res_unique28392, 
                  GSE25941 = res_unique25941)
@@ -221,7 +216,7 @@ res_unique25941[res_unique25941["Gene"] == "SKAP2"]
 res_unique28392[res_unique28392["Gene"] == "SKAP2"]
 ```
 ```{r}
-# Тепловая карта общая
+# Г’ГҐГЇГ«Г®ГўГ Гї ГЄГ Г°ГІГ  Г®ГЎГ№Г Гї
 fc_table <- lapply(names(deg_lis?), function(name) {
   df <- deg_list[[name]]
   df %>%
@@ -254,7 +249,7 @@ pheatmap(fc_subset,
 ```
 
 ```{r}
-# Тепловая карта отобранных генов
+# Г’ГҐГЇГ«Г®ГўГ Гї ГЄГ Г°ГІГ  Г®ГІГ®ГЎГ°Г Г­Г­Г»Гµ ГЈГҐГ­Г®Гў
 selected_genes <- c(
   "ATP1B4", "RPL22", "ESRRA", "UQCRB", "ACOT13", "PPIC", "ACTR1A", "STRADB", 
   "HNRNPA2B1", "ALDH?A1", "UNC13C", "CMC2", "GPATCH8", "NDUFAF5", 
@@ -273,21 +268,21 @@ pheatmap(fc_subset,
 ```
 
 ```{r}
-# Выбираем только нужные столбцы: logFC и Gene
+# Г‚Г»ГЎГЁГ°Г ГҐГ¬ ГІГ®Г«ГјГЄГ® Г­ГіГ¦Г­Г»ГҐ Г±ГІГ®Г«ГЎГ¶Г»: logFC ГЁ Gene
 df1 <- res_unique59880[, c("Gene", "logFC")]
 df2 <- res_unique28392?, c("Gene", "logFC")]
 df3 <- res_unique25941[, c("Gene", "logFC")]
 
-# Переименуем logFC для ясности
+# ГЏГҐГ°ГҐГЁГ¬ГҐГ­ГіГҐГ¬ logFC Г¤Г«Гї ГїГ±Г­Г®Г±ГІГЁ
 colnames(df1)[2] <- "GSE59880_logFC"
 colnames(df2)[2] <- "GSE28392_logFC"
 colnames(df3)[2] <- "GSE25941_logFC"
 
-# Объединяем по Gene
+# ГЋГЎГєГҐГ¤ГЁГ­ГїГҐГ¬ ГЇГ® Gene
 merged1 <- merge(df1, d?2, by = "Gene", all = TRUE)
 merged_all <- merge(merged1, df3, by = "Gene", all = TRUE)
 
-# Удалим гены, где logFC отсутствует во всех датасетах (если такие есть)
+# Г“Г¤Г Г«ГЁГ¬ ГЈГҐГ­Г», ГЈГ¤ГҐ logFC Г®ГІГ±ГіГІГ±ГІГўГіГҐГІ ГўГ® ГўГ±ГҐГµ Г¤Г ГІГ Г±ГҐГІГ Гµ (ГҐГ±Г«ГЁ ГІГ ГЄГЁГҐ ГҐГ±ГІГј)
 merged_all <- merged_all[rowSums(is.na(merged_all[, -1])) < 3, ]
 
 head(merged_all)
@@ -305,7 +300,7 @@ ggVennDiagram(significant_genes, label_alpha = 0) +
 ```{r}
 exprSet25941 <- exprs(gse_list["GSE25941"][[1]])
 
-?oxplot(exprSet25941, outline = FALSE, las=2, main = "До нормализации", col= "lightblue")
+?oxplot(exprSet25941, outline = FALSE, las=2, main = "Г„Г® Г­Г®Г°Г¬Г Г«ГЁГ§Г Г¶ГЁГЁ", col= "lightblue")
 ```
 
 ```{r}
@@ -319,23 +314,23 @@ pcaData <- data.frame(PC1 = pca25941$x[,1],
                          Sample = colnames(exprSet25941))
 ggplot(pcaData, aes(PC1, PC2, label=Sample)) +
     geom_point(size=3) +    geom_text(vjust=1.5, size=3) +
-    ggtitle("PCA по экспрессии генов") +    theme_minimal()
+    ggtitle("PCA ГЇГ® ГЅГЄГ±ГЇГ°ГҐГ±Г±ГЁГЁ ГЈГҐГ­Г®Гў") +    theme_minimal()
 
-# Опционально: добав??ть метаданные (например, возраст, до/после тренировки), если они есть
+# ГЋГЇГ¶ГЁГ®Г­Г Г«ГјГ­Г®: Г¤Г®ГЎГ Гў??ГІГј Г¬ГҐГІГ Г¤Г Г­Г­Г»ГҐ (Г­Г ГЇГ°ГЁГ¬ГҐГ°, ГўГ®Г§Г°Г Г±ГІ, Г¤Г®/ГЇГ®Г±Г«ГҐ ГІГ°ГҐГ­ГЁГ°Г®ГўГЄГЁ), ГҐГ±Г«ГЁ Г®Г­ГЁ ГҐГ±ГІГј
 pdata <- pData(gse_list["GSE25941"][[1]])
-pcaData$group <- pdata$characteristics_ch1.1  # пример
+pcaData$group <- pdata$characteristics_ch1.1  # ГЇГ°ГЁГ¬ГҐГ°
 
 
             
-# Тогда можно раскрасить точки по группам
-ggplot(pcaData, aes(PC1, PC2, co?or=group)) + geom_point(size=3) + ggtitle("PCA с группами")
+# Г’Г®ГЈГ¤Г  Г¬Г®Г¦Г­Г® Г°Г Г±ГЄГ°Г Г±ГЁГІГј ГІГ®Г·ГЄГЁ ГЇГ® ГЈГ°ГіГЇГЇГ Г¬
+ggplot(pcaData, aes(PC1, PC2, co?or=group)) + geom_point(size=3) + ggtitle("PCA Г± ГЈГ°ГіГЇГЇГ Г¬ГЁ")
 
 ```
 
 ```{r}
 exprSet28392 <- exprs(gse_list["GSE28392"][[1]])
 
-boxplot(exprSet28392, outline = FALSE, las=2, main = "До нормализации", col= "lightblue")
+boxplot(exprSet28392, outline = FALSE, las=2, main = "Г„Г® Г­Г®Г°Г¬Г Г«ГЁГ§Г Г¶ГЁГЁ", col= "lightblue")
 ```
 
 ```{r}
@@ -346,22 +341,22 @@ pcaData <- data.frame(PC1 = pca28392$x[,1],
                          Sample = colnames(exprSet28392))
 ggplot(pcaData, aes(PC1, PC2, label=Sample)) +
     geom_point(size?3) +    geom_text(vjust=1.5, size=3) +
-    ggtitle("PCA по экспрессии генов") +    theme_minimal()
+    ggtitle("PCA ГЇГ® ГЅГЄГ±ГЇГ°ГҐГ±Г±ГЁГЁ ГЈГҐГ­Г®Гў") +    theme_minimal()
 
-# Опционально: добавить метаданные (например, возраст, до/после тренировки), если они есть
+# ГЋГЇГ¶ГЁГ®Г­Г Г«ГјГ­Г®: Г¤Г®ГЎГ ГўГЁГІГј Г¬ГҐГІГ Г¤Г Г­Г­Г»ГҐ (Г­Г ГЇГ°ГЁГ¬ГҐГ°, ГўГ®Г§Г°Г Г±ГІ, Г¤Г®/ГЇГ®Г±Г«ГҐ ГІГ°ГҐГ­ГЁГ°Г®ГўГЄГЁ), ГҐГ±Г«ГЁ Г®Г­ГЁ ГҐГ±ГІГј
 pdata <- pData(gse_list["GSE28392"][[1]])
-pcaData$group <- pdata$?haracteristics_ch1.2  # пример
+pcaData$group <- pdata$?haracteristics_ch1.2  # ГЇГ°ГЁГ¬ГҐГ°
 
 
             
-# Тогда можно раскрасить точки по группам
-ggplot(pcaData, aes(PC1, PC2, color=group)) + geom_point(size=3) + ggtitle("PCA с группами")
+# Г’Г®ГЈГ¤Г  Г¬Г®Г¦Г­Г® Г°Г Г±ГЄГ°Г Г±ГЁГІГј ГІГ®Г·ГЄГЁ ГЇГ® ГЈГ°ГіГЇГЇГ Г¬
+ggplot(pcaData, aes(PC1, PC2, color=group)) + geom_point(size=3) + ggtitle("PCA Г± ГЈГ°ГіГЇГЇГ Г¬ГЁ")
 ```
 
 ```{r}
 exprSet59880 <- exprs(gse_list["GSE59880"][[1]])
 
-boxplot(exprS?t59880, outline = FALSE, las=2, main = "До нормализации", col= "lightblue")
+boxplot(exprS?t59880, outline = FALSE, las=2, main = "Г„Г® Г­Г®Г°Г¬Г Г«ГЁГ§Г Г¶ГЁГЁ", col= "lightblue")
 ```
 
 ```{r}
@@ -374,16 +369,16 @@ pcaData <- data.frame(PC1 = pca59880$x[,1],
 
 ggplot(pcaData, aes(PC1, PC2, label=Sample)) +
     geom_point(size=3) +    geom_text(vjust=1.5, size=3) +
-    ggtitle("PCA по экспрессии генов") +    theme_minimal()
+    ggtitle("PCA ГЇГ® ГЅГЄГ±ГЇГ°ГҐГ±Г±ГЁГЁ ГЈГҐГ­Г®Гў") +    theme_minimal()
 
-# Опционально: добавить метаданные?(например, возраст, до/после тренировки), если они есть
+# ГЋГЇГ¶ГЁГ®Г­Г Г«ГјГ­Г®: Г¤Г®ГЎГ ГўГЁГІГј Г¬ГҐГІГ Г¤Г Г­Г­Г»ГҐ?(Г­Г ГЇГ°ГЁГ¬ГҐГ°, ГўГ®Г§Г°Г Г±ГІ, Г¤Г®/ГЇГ®Г±Г«ГҐ ГІГ°ГҐГ­ГЁГ°Г®ГўГЄГЁ), ГҐГ±Г«ГЁ Г®Г­ГЁ ГҐГ±ГІГј
 pdata <- pData(gse_list["GSE59880"][[1]])
-pcaData$group <- pdata$characteristics_ch1  # пример
+pcaData$group <- pdata$characteristics_ch1  # ГЇГ°ГЁГ¬ГҐГ°
 
 
             
-# Тогда можно раскрасить точки по группам
-ggplot(pcaData, aes(PC1, PC2, color=group)) + ge?m_point(size=3) + ggtitle("PCA с группами")
+# Г’Г®ГЈГ¤Г  Г¬Г®Г¦Г­Г® Г°Г Г±ГЄГ°Г Г±ГЁГІГј ГІГ®Г·ГЄГЁ ГЇГ® ГЈГ°ГіГЇГЇГ Г¬
+ggplot(pcaData, aes(PC1, PC2, color=group)) + ge?m_point(size=3) + ggtitle("PCA Г± ГЈГ°ГіГЇГЇГ Г¬ГЁ")
 ```
 
 ```{r}
@@ -400,27 +395,27 @@ for (gse_id in gse_ids) {
   pheno_list[[gse_id]] <- pheno
 }
 
-# --- ШАГ 2: Приведение матриц к общим генам (пересечение)
+# --- ГГЂГѓ 2: ГЏГ°ГЁГўГҐГ¤ГҐГ­ГЁГҐ Г¬Г ГІГ°ГЁГ¶ ГЄ Г®ГЎГ№ГЁГ¬ ГЈГҐГ­Г Г¬ (ГЇГҐГ°ГҐГ±ГҐГ·ГҐГ­ГЁГҐ)
 common_genes <- Reduce(intersect, lapply(expr_list, rownames))
 expr_list <- lapply(expr_list, function(x) x[common_genes? ])
 
-# --- ШАГ 3: Объединение данных по столбцам (образцам)
+# --- ГГЂГѓ 3: ГЋГЎГєГҐГ¤ГЁГ­ГҐГ­ГЁГҐ Г¤Г Г­Г­Г»Гµ ГЇГ® Г±ГІГ®Г«ГЎГ¶Г Г¬ (Г®ГЎГ°Г Г§Г¶Г Г¬)
 combined_expr <- do.call(cbind, expr_list)
 
-# --- ШАГ 4: Создание вектора batch (откуда образец)
+# --- ГГЂГѓ 4: Г‘Г®Г§Г¤Г Г­ГЁГҐ ГўГҐГЄГІГ®Г°Г  batch (Г®ГІГЄГіГ¤Г  Г®ГЎГ°Г Г§ГҐГ¶)
 batch <- unlist(lapply(seq_along(expr_list), function(i) rep(names(expr_list)[i], ncol(expr_list[[i?]))))
 
-# --- ШАГ 5: Проверка распределения данных и нормализация
-boxplot(combined_expr, outline=FALSE, las=2, col="lightblue", main="До batch коррекции")
+# --- ГГЂГѓ 5: ГЏГ°Г®ГўГҐГ°ГЄГ  Г°Г Г±ГЇГ°ГҐГ¤ГҐГ«ГҐГ­ГЁГї Г¤Г Г­Г­Г»Гµ ГЁ Г­Г®Г°Г¬Г Г«ГЁГ§Г Г¶ГЁГї
+boxplot(combined_expr, outline=FALSE, las=2, col="lightblue", main="Г„Г® batch ГЄГ®Г°Г°ГҐГЄГ¶ГЁГЁ")
 
-# Предполагается, что данные уже нормализованы (обычно GEOMatrix данные предобработаны)
-# Если нет — ??римените RMA отдельно перед объединением
+# ГЏГ°ГҐГ¤ГЇГ®Г«Г ГЈГ ГҐГІГ±Гї, Г·ГІГ® Г¤Г Г­Г­Г»ГҐ ГіГ¦ГҐ Г­Г®Г°Г¬Г Г«ГЁГ§Г®ГўГ Г­Г» (Г®ГЎГ»Г·Г­Г® GEOMatrix Г¤Г Г­Г­Г»ГҐ ГЇГ°ГҐГ¤Г®ГЎГ°Г ГЎГ®ГІГ Г­Г»)
+# Г…Г±Г«ГЁ Г­ГҐГІ В— ??Г°ГЁГ¬ГҐГ­ГЁГІГҐ RMA Г®ГІГ¤ГҐГ«ГјГ­Г® ГЇГҐГ°ГҐГ¤ Г®ГЎГєГҐГ¤ГЁГ­ГҐГ­ГЁГҐГ¬
 
-# --- ШАГ 6: Batch-коррекция с помощью ComBat
+# --- ГГЂГѓ 6: Batch-ГЄГ®Г°Г°ГҐГЄГ¶ГЁГї Г± ГЇГ®Г¬Г®Г№ГјГѕ ComBat
 modcombat <- model.matrix(~1, data=data.frame(batch=batch))
 combat_expr <- ComBat(dat=combined_expr, batch=batch, mod=modcombat, par.prior=TRUE, prior.plots=FALSE)
 
-# -?- ШАГ 7: Визуализация PCA до и после batch коррекции
+# -?- ГГЂГѓ 7: Г‚ГЁГ§ГіГ Г«ГЁГ§Г Г¶ГЁГї PCA Г¤Г® ГЁ ГЇГ®Г±Г«ГҐ batch ГЄГ®Г°Г°ГҐГЄГ¶ГЁГЁ
 
 plot_pca <- function(expr_mat, batch, title) {
   pca <- prcomp(t(expr_mat), scale.=TRUE)
@@ -432,8 +427,8 @@ plot_pca <- function(expr_mat, batch, title) {
     theme_minimal()
 }
 
-p1 <- plot_pca(combined_expr, batch, "PCA до batch коррекции")
-p2 <- plot_pca(combat_expr, batch, "PCA после batch коррекции")
+p1 <- plot_pca(combined_expr, batch, "PCA Г¤Г® batch ГЄГ®Г°Г°ГҐГЄГ¶ГЁГЁ")
+p2 <- plot_pca(combat_expr, batch, "PCA ГЇГ®Г±Г«ГҐ batch ГЄГ®Г°Г°ГҐГЄГ¶ГЁГЁ")
 
 
 grid.arrange(p1, p2, ncol=2)
@@ -444,7 +439,7 @@ if (!requ?reNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 
 BiocManager::install("clusterProfiler")
-BiocManager::install("org.Hs.eg.db")  # Для человека
+BiocManager::install("org.Hs.eg.db")  # Г„Г«Гї Г·ГҐГ«Г®ГўГҐГЄГ 
 install.packages("tidyverse")
 ```
 ```{r}
@@ -452,12 +447,12 @@ lif (!requireNamespace("biomaRt", quietly?= TRUE)) {
   install.packages("BiocManager")
   BiocManager::install("biomaRt")
 }
-# Загрузка библиотек
+# Г‡Г ГЈГ°ГіГ§ГЄГ  ГЎГЁГЎГ«ГЁГ®ГІГҐГЄ
 library(clusterProfiler)
 library(org.Hs.eg.db)
 library(enrichplot)
 
-# Список символов генов
+# Г‘ГЇГЁГ±Г®ГЄ Г±ГЁГ¬ГўГ®Г«Г®Гў ГЈГҐГ­Г®Гў
 gene_symbols <- c("SKAP2", "DERL1", "TPI1", "ALDH6A1", "STRADB?, "ESRRA", "N4BP2L2", "FAM171A1", "UNC13C",
                  "FEZ2", "PPIC", "CLEC11A", "GPATCH8", "CMC2", "RXRG", "HNRNPA2B1", "PDE4DIP", "RBM39",
                  "NT5C2", "PPP1R14B", "SYNPO2", "SHLD1", "NPAS3", "SPTBN1", "PLAG1", "ATP1B4", "PTRHD1",
@@ -468,7 +463,7 @@ gene_symbols <- c("SKAP2", "DERL1", "TPI1", "ALDH6A1", "STRADB?, "ESRRA", "N4BP2
 
 library(biomaRt)
 
-# Используем GRCh37 (если нужна старая сборка)
+# Г€Г±ГЇГ®Г«ГјГ§ГіГҐГ¬ GRCh37 (ГҐГ±Г«ГЁ Г­ГіГ¦Г­Г  Г±ГІГ Г°Г Гї Г±ГЎГ®Г°ГЄГ )
 ensembl <- useMart("ENSEMBL_MART_ENSEMBL", 
                    dataset = "hsapiens_gene_ensembl", 
       ?            host = "https://grch37.ensembl.org")#`
